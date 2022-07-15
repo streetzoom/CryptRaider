@@ -2,6 +2,7 @@
 #include "Engine/World.h"
 #include "DrawDebugHelpers.h"
 
+
 // Sets default values for this component's properties
 UGrabber::UGrabber()
 {
@@ -17,23 +18,36 @@ UGrabber::UGrabber()
 void UGrabber::BeginPlay()
 {
 	Super::BeginPlay();
-
-	// ...
-	
 }
 
 
 // Called every frame
 void UGrabber::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
-	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);	
+	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+
+	UPhysicsHandleComponent* PhysicsHandle { GetPhysicsHandle() };
+	if (PhysicsHandle == nullptr)
+	{
+		return;
+	}
+
+	FVector TargetLocation { GetComponentLocation() + GetForwardVector() * HoldDistance };
+	PhysicsHandle->SetTargetLocationAndRotation(TargetLocation, GetComponentRotation());
 }
 
 void UGrabber::Grab()
 {
-	const FVector StartLine { GetComponentLocation() };
-	const FVector EndLine { StartLine + GetForwardVector() * MaxGrabDistance };
-	DrawDebugLine(GetWorld(), StartLine, EndLine, FColor::Cyan);
+	UPhysicsHandleComponent* PhysicsHandle { GetPhysicsHandle() };
+	if (PhysicsHandle == nullptr)
+	{
+		return;
+	}
+	
+	FVector StartLine { GetComponentLocation() };
+	FVector EndLine { StartLine + GetForwardVector() * MaxGrabDistance };
+	DrawDebugLine(GetWorld(), StartLine, EndLine, FColor::Red);
+	DrawDebugSphere(GetWorld(), EndLine, 10, 10, FColor::Blue, false, 5);
 
 	FCollisionShape Sphere { FCollisionShape::MakeSphere(GrabRadius) };
 	FHitResult HitResult {};
@@ -43,11 +57,34 @@ void UGrabber::Grab()
 		FQuat::Identity,
 		ECC_GameTraceChannel2,
 		Sphere);
+
+	if (HasHit)
+	{
+		DrawDebugSphere(GetWorld(), HitResult.Location, 10, 10, FColor::Green, false, 5);
+		DrawDebugSphere(GetWorld(), HitResult.ImpactPoint, 10, 10, FColor::Red, false, 5);
+		PhysicsHandle->GrabComponentAtLocationWithRotation(
+			HitResult.GetComponent(),
+			NAME_None,
+			HitResult.ImpactPoint,
+			GetComponentRotation()			
+		);
+	}
+	UE_LOG(LogTemp, Display, TEXT("Grab Grabber"));
 }
 
 void UGrabber::Release()
 {
 	UE_LOG(LogTemp, Display, TEXT("Released Grabber"));
+}
+
+UPhysicsHandleComponent* UGrabber::GetPhysicsHandle() const
+{
+	UPhysicsHandleComponent* Result { GetOwner()->FindComponentByClass<UPhysicsHandleComponent>() };
+	if (Result == nullptr)
+	{
+		UE_LOG(LogTemp, Error, TEXT("Grabber requires a UPhysicsHandleComponent."));
+	}
+	return Result;
 }
 
 
