@@ -1,6 +1,5 @@
 #include "Grabber.h"
 #include "Engine/World.h"
-#include "DrawDebugHelpers.h"
 
 
 // Sets default values for this component's properties
@@ -27,12 +26,7 @@ void UGrabber::TickComponent(float DeltaTime, ELevelTick TickType, FActorCompone
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
 	UPhysicsHandleComponent* PhysicsHandle { GetPhysicsHandle() };
-	if (PhysicsHandle == nullptr)
-	{
-		return;
-	}
-
-	if (PhysicsHandle->GetGrabbedComponent() != nullptr)
+	if (PhysicsHandle && PhysicsHandle->GetGrabbedComponent() )
 	{
 		FVector TargetLocation { GetComponentLocation() + GetForwardVector() * HoldDistance };
 		PhysicsHandle->SetTargetLocationAndRotation(TargetLocation, GetComponentRotation());
@@ -52,10 +46,9 @@ void UGrabber::Grab()
 
 	if (HasHit)
 	{
-		DrawDebugSphere(GetWorld(), HitResult.Location, 10, 10, FColor::Green, false, 5);
-		DrawDebugSphere(GetWorld(), HitResult.ImpactPoint, 10, 10, FColor::Red, false, 5);
 		UPrimitiveComponent* HitComponent { HitResult.GetComponent() };
 		HitComponent->WakeAllRigidBodies();
+		HitResult.GetActor()->Tags.Add("Grabbed");
 		PhysicsHandle->GrabComponentAtLocationWithRotation(
 			HitComponent,
 			NAME_None,
@@ -63,19 +56,16 @@ void UGrabber::Grab()
 			GetComponentRotation()			
 		);
 	}
-	UE_LOG(LogTemp, Display, TEXT("Grab Grabber"));
 }
 
 void UGrabber::Release()
 {
 	UPhysicsHandleComponent* PhysicsHandle { GetPhysicsHandle() };
-	if (PhysicsHandle == nullptr)
+	
+	if (PhysicsHandle && PhysicsHandle->GetGrabbedComponent() )
 	{
-		return;
-	}
-
-	if (PhysicsHandle->GetGrabbedComponent() != nullptr)
-	{
+		AActor* GrabbedActor { PhysicsHandle->GetGrabbedComponent()->GetOwner() };
+		GrabbedActor->Tags.Remove("Grabbed");
 		PhysicsHandle->GetGrabbedComponent()->WakeAllRigidBodies();
 		PhysicsHandle->ReleaseComponent();
 	}
@@ -95,9 +85,6 @@ bool UGrabber::GetGrabbableInReach(FHitResult& OutHitResult) const
 {
 	FVector StartLine { GetComponentLocation() };
 	FVector EndLine { StartLine + GetForwardVector() * MaxGrabDistance };
-	DrawDebugLine(GetWorld(), StartLine, EndLine, FColor::Red);
-	DrawDebugSphere(GetWorld(), EndLine, 10, 10, FColor::Blue, false, 5);
-
 	FCollisionShape Sphere { FCollisionShape::MakeSphere(GrabRadius) };
 	return GetWorld()->SweepSingleByChannel(
 		OutHitResult,
