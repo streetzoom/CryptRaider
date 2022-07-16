@@ -21,7 +21,27 @@ void UTriggerComponent::BeginPlay()
 
 void UTriggerComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
-	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);	
+	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+
+	if (Mover == nullptr)
+	{
+		return;
+	}
+
+	AActor* Actor = GetAcceptableActor();
+	if (Actor != nullptr)
+	{
+		Mover->SetShouldMove(true);
+	}
+	else
+	{
+		Mover->SetShouldMove(false);
+	}
+}
+
+void UTriggerComponent::SetMover(UMover* NewMover)
+{
+	Mover = NewMover;
 }
 
 AActor* UTriggerComponent::GetAcceptableActor() const
